@@ -154,7 +154,7 @@ Please report any issues or suggestions to https://github.com/acidbubbles/vam-ti
         {
             var sb = new StringBuilder();
             sb.AppendLine($"Animation Time: {Plugin.Animation.Time}");
-            sb.AppendLine($"Animation Name: {Plugin.Animation.Current.AnimationName}");
+            sb.AppendLine($"Animation Id: {Plugin.Animation.Current.AnimationId}");
             foreach (var target in Plugin.Animation.Current.GetAllOrSelectedTargets())
             {
                 sb.AppendLine($"=== Target: {target.Name} ===");

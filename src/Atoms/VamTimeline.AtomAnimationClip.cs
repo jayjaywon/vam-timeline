@@ -20,7 +20,7 @@ namespace VamTimeline
         private float _animationLength = DefaultAnimationLength;
         private IAnimationTarget _selected;
         private bool _loop = true;
-        private string _nextAnimationName;
+        private string _nextAnimationId;
 
         public AnimationClip Clip { get; }
         public AnimationPattern AnimationPattern { get; set; }
@@ -28,7 +28,8 @@ namespace VamTimeline
         public readonly List<FreeControllerAnimationTarget> TargetControllers = new List<FreeControllerAnimationTarget>();
         public IEnumerable<IAnimationTarget> AllTargets => TargetControllers.Cast<IAnimationTarget>().Concat(TargetFloatParams.Cast<IAnimationTarget>());
         public bool EnsureQuaternionContinuity { get; set; } = true;
-        public string AnimationName { get; }
+        public string AnimationId { get; }
+        public string AnimationLabel { get; set; }
         public float Speed { get; set; } = 1f;
         public float AnimationLength
         {
@@ -54,23 +55,24 @@ namespace VamTimeline
             }
         }
         public float BlendDuration { get; set; } = DefaultBlendDuration;
-        public string NextAnimationName
+        public string NextAnimationId
         {
             get
             {
-                return _nextAnimationName;
+                return _nextAnimationId
             }
             set
             {
-                _nextAnimationName = value == "" ? null : value;
+                _nextAnimationId = value == "" ? null : value;
             }
         }
 
         public float NextAnimationTime { get; set; }
 
-        public AtomAnimationClip(string animationName)
+        public AtomAnimationClip(string id, string label)
         {
-            AnimationName = animationName;
+            AnimationId = id;
+            AnimationLabel = label;
             Clip = new AnimationClip
             {
                 legacy = true
@@ -87,11 +89,6 @@ namespace VamTimeline
             _selected = string.IsNullOrEmpty(val)
                 ? null
                 : AllTargets.FirstOrDefault(c => c.Name == val);
-        }
-
-        public IEnumerable<string> GetTargetsNames()
-        {
-            return AllTargets.Select(c => c.Name).ToList();
         }
 
         public FreeControllerAnimationTarget Add(FreeControllerV3 controller)

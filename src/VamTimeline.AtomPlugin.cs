@@ -184,7 +184,7 @@ namespace VamTimeline
             _saveJSON = new JSONStorableString(StorableNames.Save, "", (string v) => RestoreState(v));
             RegisterString(_saveJSON);
 
-            AnimationJSON = new JSONStorableStringChooser(StorableNames.Animation, new List<string>(), "Anim1", "Animation", val => ChangeAnimation(val))
+            AnimationJSON = new JSONStorableStringChooser(StorableNames.Animation, new List<string>(), "", "Animation", val => ChangeAnimation(val))
             {
                 isStorable = false
             };
@@ -393,18 +393,24 @@ namespace VamTimeline
 
         #region Callbacks
 
-        private void ChangeAnimation(string animationName)
+        private void ChangeAnimation(string animationLabel)
         {
             _saveEnabled = false;
             try
             {
+                var animationId = Animation.Clips.First(c => c.AnimationLabel == animationLabel).AnimationId
                 FilterAnimationTargetJSON.val = AllTargets;
-                if (!Animation.IsPlaying() || Animation.Current.AnimationName != animationName)
-                    Animation.ChangeAnimation(animationName);
+                if (!Animation.IsPlaying() || Animation.Current.AnimationId != animationId)
+                    Animation.ChangeAnimation(animationId);
                 if (Animation.IsPlaying())
-                    AnimationJSON.valNoCallback = Animation.PlayedAnimation;
+                {
+                    var playedAnimationLabel = Animation.Clips.First(c => c.AnimationId == Animation.PlayedAnimationId).AnjmationLabel;
+                    AnimationJSON.valNoCallback = playedAnimationLabel;
+                }
                 else
+                {
                     AnimationModified();
+                }
             }
             catch (Exception exc)
             {
@@ -472,7 +478,7 @@ namespace VamTimeline
         private void Undo()
         {
             if (_undoList.Count == 0) return;
-            var animationName = AnimationJSON.val;
+            var animationLabel = AnimationJSON.val;
             var pop = _undoList[_undoList.Count - 1];
             _undoList.RemoveAt(_undoList.Count - 1);
             if (_undoList.Count == 0) return;
@@ -483,10 +489,10 @@ namespace VamTimeline
             {
                 RestoreState(pop);
                 _saveJSON.valNoCallback = pop;
-                if (Animation.Clips.Any(c => c.AnimationName == animationName))
-                    AnimationJSON.val = animationName;
+                if (Animation.Clips.Any(c => c.AnimationId == animationId))
+                    AnimationJSON.val = Animations.Clips.First(c => c.AnimationId == animationId).AnimationLabel;
                 else
-                    AnimationJSON.valNoCallback = Animation.Clips.First().AnimationName;
+                    AnimationJSON.valNoCallback = Animation.Clips.First().AnimationLabel;
                 AnimationModified();
                 UpdateTime(time);
             }
@@ -501,8 +507,8 @@ namespace VamTimeline
             _saveEnabled = false;
             try
             {
-                var animationName = Animation.AddAnimation();
-                ChangeAnimation(animationName);
+                var clip = Animation.AddAnimation();
+                ChangeAnimation(clip.AnimationId);
             }
             finally
             {
@@ -591,8 +597,8 @@ namespace VamTimeline
                 // Update UI
                 ScrubberJSON.max = Animation.Current.AnimationLength;
                 ScrubberJSON.valNoCallback = Animation.Time;
-                AnimationJSON.choices = Animation.GetAnimationNames().ToList();
-                AnimationJSON.valNoCallback = Animation.Current.AnimationName;
+                AnimationJSON.choices = Animation.Clips.Select(c => c.AnimationLabel).ToList();
+                AnimationJSON.valNoCallback = Animation.Current.AnimationLabel;
                 FilterAnimationTargetJSON.choices = new List<string> { AllTargets }.Concat(Animation.Current.GetTargetsNames()).ToList();
 
                 // Save

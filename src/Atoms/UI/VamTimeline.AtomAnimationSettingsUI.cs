@@ -141,7 +141,7 @@ namespace VamTimeline
         private void UpdateForcedNextAnimationTime()
         {
             if (Plugin.Animation.Current.Loop) return;
-            if (Plugin.Animation.Current.NextAnimationName == null)
+            if (Plugin.Animation.Current.NextAnimationId == null)
             {
                 Plugin.Animation.Current.NextAnimationTime = 0;
                 _nextAnimationTimeJSON.valNoCallback = 0;
@@ -154,7 +154,7 @@ namespace VamTimeline
         {
             var current = Plugin.Animation.Current;
 
-            if (current.NextAnimationName == null)
+            if (current.NextAnimationId == null)
             {
                 _nextAnimationPreviewJSON.val = "No next animation configured";
                 return;
@@ -178,7 +178,7 @@ namespace VamTimeline
 
         private List<string> GetEligibleNextAnimations()
         {
-            return new[] { "" }.Concat(Plugin.Animation.GetAnimationNames().Where(n => n != Plugin.Animation.Current.AnimationName)).ToList();
+            return new[] { "" }.Concat(Plugin.Animation.Clips.Where(n => n != Plugin.Animation.Current)).Select(c => c.AnimationLabel).ToList();
         }
 
         private void InitControllersUI()
@@ -386,13 +386,13 @@ namespace VamTimeline
 
         private void ChangeNextAnimation(string val)
         {
-            Plugin.Animation.Current.NextAnimationName = val;
+            Plugin.Animation.Current.NextAnimationId = Plugin.Animation.Clips.First(c => c.AnimationLabel == val).AnimationId;
             Plugin.AnimationModified();
         }
 
         private void SetNextAnimationTime(float nextTime)
         {
-            if (Plugin.Animation.Current.NextAnimationName == null)
+            if (Plugin.Animation.Current.NextAnimationId == null)
             {
                 _nextAnimationTimeJSON.valNoCallback = nextTime;
                 Plugin.Animation.Current.NextAnimationTime = nextTime;
@@ -535,7 +535,7 @@ namespace VamTimeline
             _blendDurationJSON.valNoCallback = current.BlendDuration;
             _loop.valNoCallback = current.Loop;
             _ensureQuaternionContinuity.valNoCallback = current.EnsureQuaternionContinuity;
-            _nextAnimationJSON.valNoCallback = current.NextAnimationName;
+            _nextAnimationJSON.valNoCallback = current.NextAnimationLabel;
             _nextAnimationJSON.choices = GetEligibleNextAnimations();
             _nextAnimationTimeJSON.valNoCallback = current.NextAnimationTime;
             _linkedAnimationPatternJSON.valNoCallback = current.AnimationPattern?.containingAtom.uid ?? "";
