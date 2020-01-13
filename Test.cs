@@ -11,16 +11,22 @@ public class SlowStringStorableExample : MVRScript
 {
     public override void Init()
     {
+        CreateToggle(new JSONStorableBool("Fast", false, (bool v) => Magic.Fast = v));
         CreateButton("Simulate Save").button.onClick.AddListener(() =>
         {
             var sw = Stopwatch.StartNew();
             var jc = new JSONClass();
-            jc.SetThis("test", new string('X', 50000));
+            jc.SetThis("test", new string('X', 100000));
             var sb = new StringBuilder();
             jc.ToString(string.Empty, sb);
             SuperController.LogMessage($"Simulation: {sw.Elapsed.TotalSeconds:0.000}s");
         });
     }
+}
+
+public static class Magic
+{
+    public static bool Fast;
 }
 
 namespace MySimpleJSON
@@ -261,6 +267,42 @@ namespace MySimpleJSON
             return text;
         }
 
+        internal static string EscapeFast(string aText)
+        {
+            var sb = new StringBuilder();
+            foreach (char c in aText)
+            {
+                switch (c)
+                {
+                    case '\\':
+                        sb.Append("\\\\");
+                        break;
+                    case '"':
+                        sb.Append("\\\"");
+                        break;
+                    case '\n':
+                        sb.Append("\\n");
+                        break;
+                    case '\r':
+                        sb.Append("\\r");
+                        break;
+                    case '\t':
+                        sb.Append("\\t");
+                        break;
+                    case '\b':
+                        sb.Append("\\b");
+                        break;
+                    case '\f':
+                        sb.Append("\\f");
+                        break;
+                    default:
+                        sb.Append(c);
+                        break;
+                }
+            }
+            return sb.ToString();
+        }
+
         public static JSONNode Parse(string aJSON)
         {
             Stack<JSONNode> stack = new Stack<JSONNode>();
@@ -420,23 +462,23 @@ namespace MySimpleJSON
 
         public override JSONNode GetThis(string aKey)
         {
-                if (m_Dict.ContainsKey(aKey))
-                {
-                    return m_Dict[aKey];
-                }
-                return new JSONLazyCreator(this, aKey);
+            if (m_Dict.ContainsKey(aKey))
+            {
+                return m_Dict[aKey];
+            }
+            return new JSONLazyCreator(this, aKey);
         }
 
         public override void SetThis(string aKey, JSONNode value)
         {
-                if (m_Dict.ContainsKey(aKey))
-                {
-                    m_Dict[aKey] = value;
-                }
-                else
-                {
-                    m_Dict.Add(aKey, value);
-                }
+            if (m_Dict.ContainsKey(aKey))
+            {
+                m_Dict[aKey] = value;
+            }
+            else
+            {
+                m_Dict.Add(aKey, value);
+            }
         }
 
         public override int Count
@@ -596,14 +638,14 @@ namespace MySimpleJSON
 
         public override JSONNode GetThis(string aKey)
         {
-                return new JSONLazyCreator(this, aKey);
+            return new JSONLazyCreator(this, aKey);
         }
 
         public override void SetThis(string aKey, JSONNode value)
         {
-                JSONClass jSONClass = new JSONClass();
-                jSONClass.Add(aKey, value);
-                Set(jSONClass);
+            JSONClass jSONClass = new JSONClass();
+            jSONClass.Add(aKey, value);
+            Set(jSONClass);
         }
 
         public override JSONClass AsObject
@@ -743,7 +785,10 @@ namespace MySimpleJSON
 
         public override void ToString(string aPrefix, StringBuilder sb)
         {
-            sb.Append("\"" + JSONNode.Escape(m_Data) + "\"");
+            if (Magic.Fast)
+                sb.Append("\"" + JSONNode.EscapeFast(m_Data) + "\"");
+            else
+                sb.Append("\"" + JSONNode.Escape(m_Data) + "\"");
         }
     }
 }
