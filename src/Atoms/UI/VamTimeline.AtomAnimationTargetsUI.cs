@@ -1,6 +1,9 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using AssetBundles;
+using UnityEngine;
 
 namespace VamTimeline
 {
@@ -23,6 +26,7 @@ namespace VamTimeline
         private UIDynamicButton _toggleControllerUI;
         private UIDynamicButton _toggleFloatParamUI;
         private UIDynamicPopup _addParamListUI;
+        private AnimationStep animStep;
         private readonly List<JSONStorableBool> _removeToggles = new List<JSONStorableBool>();
 
         public AtomAnimationTargetsUI(IAtomPlugin plugin)
@@ -33,6 +37,33 @@ namespace VamTimeline
 
         #region Init
 
+        public class TestHandler : TriggerActionHandler
+        {
+            public RectTransform CreateTriggerActionDiscreteUI()
+            {
+                var apAsset = SuperController.singleton.atomAssets.FirstOrDefault(a => a.assetName == "AnimationPattern");
+                var prefab = SuperController.singleton.GetCachedPrefab(apAsset.assetBundleName, apAsset.assetName);
+                var animPattern = prefab.GetComponentInChildren<AnimationPattern>();
+                var animStep = animPattern.animationStepPrefab.GetComponentInChildren<AnimationStep>();
+                var triggerUI = GameObject.Instantiate(animStep.triggerActionDiscretePrefab);
+                return triggerUI;
+            }
+
+            public RectTransform CreateTriggerActionTransitionUI()
+            {
+                throw new NotSupportedException();
+            }
+
+            public void DuplicateTriggerAction(TriggerAction ta)
+            {
+                throw new NotSupportedException();
+            }
+
+            public void RemoveTriggerAction(TriggerAction ta)
+            {
+                throw new NotSupportedException();
+            }
+        }
         public override void Init()
         {
             base.Init();
@@ -54,7 +85,106 @@ namespace VamTimeline
             CreateSpacer(true);
 
             GenerateRemoveToggles();
+
+            // var handler = new TestHandler();
+            // var triggerActionDiscrete = new TriggerActionDiscrete();
+            // triggerActionDiscrete.handler = handler;
+            // var rectTransform = handler.CreateTriggerActionDiscreteUI();
+            // SuperController.LogMessage($"{_components[0].transform.parent.parent.parent.name}");
+            // rectTransform.SetParent(_components[0].transform.parent.parent);
+            // rectTransform.gameObject.SetActive(true);
+
+            Plugin.StartCoroutine(LoadAnimationStepUI());
         }
+
+        private IEnumerator LoadAnimationStepUI()
+        {
+            var apAsset = SuperController.singleton.atomAssets.FirstOrDefault(a => a.assetName == "AnimationPattern");
+            if (apAsset == null) throw new NullReferenceException(nameof(apAsset));
+            var prefab = SuperController.singleton.GetCachedPrefab(apAsset.assetBundleName, apAsset.assetName);
+            if (prefab == null)
+            {
+                // We should use SuperController.LoadAtomFromBundleAsync but it is protected...
+                var request = AssetBundleManager.LoadAssetAsync(apAsset.assetBundleName, apAsset.assetName, typeof(GameObject));
+                yield return Plugin.StartCoroutine(request);
+                var go = request.GetAsset<GameObject>();
+                SuperController.singleton.RegisterPrefab(apAsset.assetBundleName, apAsset.assetName, go);
+            }
+            var animPattern = prefab.GetComponentInChildren<AnimationPattern>();
+            if (animPattern == null) throw new NullReferenceException(nameof(animPattern));
+            var animStepAtom = GameObject.Instantiate(animPattern.animationStepPrefab);
+            if (animStepAtom == null) throw new NullReferenceException(nameof(animStepAtom));
+            animStep = animStepAtom.GetComponentInChildren<AnimationStep>();
+            if (animStep == null) throw new NullReferenceException(nameof(animStep));
+            animStep.InitUI();
+            // PrintTree(animStepAtom.gameObject, true);
+            // foreach(var uiConnect in animStepAtom.gameObject.GetComponentsInChildren<UIConnector>(true))
+            // {
+            //     SuperController.LogMessage(uiConnect.storeid);
+            // }
+            var animationConnector = animStepAtom.gameObject.GetComponentsInChildren<UIConnector>(true).FirstOrDefault(c => c.storeid == "animation");
+            animationConnector.Connect();
+            if (animStepAtom == null) throw new NullReferenceException(nameof(animationConnector));
+            foreach(var p in animStepAtom.GetAllParamAndActionNames())
+            {
+                SuperController.LogMessage(p);
+            }
+            // yield break;
+            SuperController.LogError("1");
+            if (animStep.UITransform == null) throw new NullReferenceException(nameof(animStep.UITransform));
+            var animStepTriggerUI = animStep.UITransform.GetComponentInChildren<AnimationStepTriggerUI>();
+            SuperController.LogError("2");
+            if (animStepTriggerUI == null) throw new NullReferenceException(nameof(animStepTriggerUI));
+            SuperController.LogError("3");
+            animStep.trigger = new Trigger();
+            SuperController.LogError("4");
+            animStep.trigger.handler = animStep;
+            SuperController.LogError("5");
+            animStep.trigger.triggerActionsParent = animStepTriggerUI.transform;
+            animStep.trigger.triggerPanel = animStepTriggerUI.transform;
+            animStep.trigger.triggerActionsPanel = animStepTriggerUI.transform;
+            SuperController.LogError("6");
+            animStep.trigger.InitTriggerUI();
+            animStep.trigger.InitTriggerActionsUI();
+            animStep.trigger.OpenTriggerActionsPanel();
+        }
+
+    public static void PrintTree(GameObject o, bool showScripts, params string[] exclude)
+    {
+        PrintTree(0, o, showScripts, exclude, new HashSet<GameObject>());
+    }
+
+    public static void PrintTree(int indent, GameObject o, bool showScripts, string[] exclude, HashSet<GameObject> found)
+    {
+        if (found.Contains(o))
+        {
+            SuperController.LogMessage("|" + new String(' ', indent) + " [" + o.tag + "] " + o.name + " {RECURSIVE}");
+            return;
+        }
+        if (o == null)
+        {
+            SuperController.LogMessage("|" + new String(' ', indent) + "{null}");
+            return;
+        }
+        if (exclude.Any(x => o.gameObject.name.Contains(x)))
+        {
+            return;
+        }
+        found.Add(o);
+        SuperController.LogMessage(
+            "|" +
+            new String(' ', indent) +
+            " [" + o.tag + "] " +
+            o.name +
+            " -> " +
+            (showScripts ? string.Join(", ", o.GetComponents<MonoBehaviour>().Select(b => b.ToString()).ToArray()) : "")
+            );
+        for (int i = 0; i < o.transform.childCount; i++)
+        {
+            var under = o.transform.GetChild(i).gameObject;
+            PrintTree(indent + 4, under, showScripts, exclude, found);
+        }
+    }
 
         private void InitControllersUI()
         {
