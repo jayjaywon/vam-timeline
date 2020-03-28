@@ -228,6 +228,12 @@ namespace VamTimeline
                 case CurveTypeValues.Smooth:
                     curve.SmoothTangents(key, 0f);
                     break;
+                case CurveTypeValues.Constant:
+                    keyframe.inWeight = 0;
+                    keyframe.outWeight = 0;
+                    keyframe.inTangent = Mathf.Infinity;
+                    keyframe.outTangent = Mathf.Infinity;
+                    break;
                 case CurveTypeValues.LinearFlat:
                     keyframe.inTangent = CalculateLinearTangent(before, keyframe);
                     keyframe.outTangent = 0f;
