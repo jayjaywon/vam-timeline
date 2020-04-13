@@ -377,16 +377,18 @@ namespace VamTimeline
             clip.Clip.ClearCurves();
             foreach (var target in clip.TargetControllers)
             {
+                if (clip.EnsureQuaternionContinuity)
+                    target.EnsureQuaternionContinuity();
+
                 target.ReapplyCurveTypes();
                 if (clip.Loop)
                 {
                     target.SetCurveSnapshot(clip.AnimationLength, target.GetCurveSnapshot(0f));
                     target.SmoothLoop();
                 }
+
                 target.ReapplyCurvesToClip(clip.Clip);
             }
-            if (clip.EnsureQuaternionContinuity)
-                clip.Clip.EnsureQuaternionContinuity();
 
             foreach (var target in clip.TargetFloatParams)
             {

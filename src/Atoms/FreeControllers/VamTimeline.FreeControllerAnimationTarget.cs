@@ -101,62 +101,105 @@ namespace VamTimeline
 
         #endregion
 
-        // https://blender.stackexchange.com/a/28474/19026
+        #region Quaternions
+
         public void EnsureQuaternionContinuity()
         {
-            var rotations = new List<Quaternion>();
-            for(var key = 0; key < RotX.length; key++)
+            return;
+            // Test 3
+            // for (var key = 1; key < RotX.length - 1; key++)
+            // {
+            //     Keyframe x = RotX[key];
+            //     Keyframe y = RotY[key];
+            //     Keyframe z = RotZ[key];
+            //     Keyframe w = RotW[key];
+            //     var quaternion = new Quaternion(
+            //         x.value,
+            //         y.value,
+            //         z.value,
+            //         w.value
+            //     );
+            //     var i = Quaternion.Inverse(quaternion);
+            //     x.value = i.x;
+            //     RotX.MoveKey(key, x);
+            //     y.value = i.y;
+            //     RotY.MoveKey(key, y);
+            //     z.value = i.z;
+            //     RotZ.MoveKey(key, z);
+            //     w.value = i.w;
+            //     RotW.MoveKey(key, w);
+            // }
+
+            // Test 1
+            // Keyframe x = RotX[1];
+            // Keyframe y = RotY[1];
+            // Keyframe z = RotZ[1];
+            // Keyframe w = RotW[1];
+            // var quaternion = new Quaternion(
+            //     x.value,
+            //     y.value,
+            //     z.value,
+            //     w.value
+            // );
+            // var i = Quaternion.Inverse(quaternion);
+
+            // x.value = i.x;
+            // RotX.MoveKey(1, x);
+            // y.value = i.y;
+            // RotY.MoveKey(1, y);
+            // z.value = i.z;
+            // RotZ.MoveKey(1, z);
+            // w.value = i.w;
+            // RotW.MoveKey(1, w);
+
+            // Attempt 0
+            Quaternion? previous = null;
+            for (var key = 0; key < RotX.length - 1; key++)
             {
-                rotations.Add(new Quaternion(
-                    RotX[key].value,
-                    RotY[key].value,
-                    RotZ[key].value,
-                    RotW[key].value
-                ));
+                Keyframe x = RotX[key];
+                Keyframe y = RotY[key];
+                Keyframe z = RotZ[key];
+                Keyframe w = RotW[key];
+                var quaternion = new Quaternion(
+                    x.value,
+                    y.value,
+                    z.value,
+                    w.value
+                );
+
+                if (previous == null)
+                {
+                    previous = quaternion;
+                    continue;
+                }
+
+                var inversed = Quaternion.Inverse(quaternion);
+                var midQ = Quaternion.Slerp(previous.Value, quaternion, 0.5f);
+                var midI = Quaternion.Slerp(previous.Value, inversed, 0.5f);
+                var deltaQ = Quaternion.Angle(previous.Value, midQ);
+                var deltaI = Quaternion.Angle(previous.Value, midI);
+                SuperController.LogMessage($"{deltaQ} v.s. {deltaI}");
+                if (deltaI == deltaQ)
+                {
+                    x.value = inversed.x;
+                    RotX.MoveKey(key, x);
+                    y.value = inversed.y;
+                    RotY.MoveKey(key, y);
+                    z.value = inversed.z;
+                    RotZ.MoveKey(key, z);
+                    w.value = inversed.w;
+                    RotW.MoveKey(key, w);
+
+                    previous = inversed;
+                }
+                else
+                {
+                    previous = quaternion;
+                }
             }
-            var qs = new QuaternionStabilizer();
-            for(var z = 0; z < rotations.Count; z++)
-            {
-                var theta = 2*Mathf.PI *z / (float)rotations.Count;
-                var mat = new Matrix4x4(
-                    new Vector4(Mathf.Cos(theta), Mathf.Sin(theta), 0, 0),
-                                new Vector4(-Mathf.Sin(theta), Mathf.Cos(theta), 0, 0),
-                                new Vector4(0,0,1, 0),
-                                Vector4.zero
-                                );
-                //var (loc,quat,scale) = mat.decompose();
-                var quat = mat.rotation;
-
-            rotations[z] = qs.Stabilize(quat);
-            }
         }
 
-private class QuaternionStabilizer
-{
-    private bool _first = true;
-    private Quaternion _old;
-
-    public Quaternion Stabilize(Quaternion q)
-    {
-        float rval;
-        if(_first)
-        {
-            rval = q;
-            _first = false;
-        }
-        else
-        {
-            var d1 = (_old-q).magnitude;
-            var d2 = (_old+q).magnitude;
-            if (d1<d2)
-                rval = q;
-            else
-                rval = -q;
-        }
-        _old = rval;
-        return rval;
-        }
-}
+        #endregion
 
         #region Keyframes control
 
@@ -165,15 +208,15 @@ private class QuaternionStabilizer
             SetKeyframe(time, Controller.transform.localPosition, Controller.transform.localRotation);
         }
 
-        public void SetKeyframe(float time, Vector3 localPosition, Quaternion locationRotation)
+        public void SetKeyframe(float time, Vector3 localPosition, Quaternion localRotation)
         {
             X.SetKeyframe(time, localPosition.x);
             Y.SetKeyframe(time, localPosition.y);
             Z.SetKeyframe(time, localPosition.z);
-            RotX.SetKeyframe(time, locationRotation.x);
-            RotY.SetKeyframe(time, locationRotation.y);
-            RotZ.SetKeyframe(time, locationRotation.z);
-            RotW.SetKeyframe(time, locationRotation.w);
+            RotX.SetKeyframe(time, localRotation.x);
+            RotY.SetKeyframe(time, localRotation.y);
+            RotZ.SetKeyframe(time, localRotation.z);
+            RotW.SetKeyframe(time, localRotation.w);
             var ms = time.ToMilliseconds();
             if (!Settings.ContainsKey(ms))
                 Settings[ms] = new KeyframeSettings { CurveType = CurveTypeValues.Smooth };
