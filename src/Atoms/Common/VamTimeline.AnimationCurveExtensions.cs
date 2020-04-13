@@ -331,6 +331,19 @@ namespace VamTimeline
             curve.MoveKey(curve.length - 1, keyframe);
         }
 
+        public static void FlatLoop(this AnimationCurve curve)
+        {
+            if (curve.length == 0) return;
+
+            var keyframe = curve[0];
+            keyframe.inTangent = 0f;
+            keyframe.outTangent = 0f;
+            curve.MoveKey(0, keyframe);
+
+            keyframe.time = curve[curve.length - 1].time;
+            curve.MoveKey(curve.length - 1, keyframe);
+        }
+
         [MethodImpl(256)]
         private static float CalculateFixedMirrorTangent(Keyframe? from, Keyframe? to, float strength = 0.8f)
         {

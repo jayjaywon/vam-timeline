@@ -386,7 +386,9 @@ namespace VamTimeline
                 target.ReapplyCurvesToClip(clip.Clip);
             }
             if (clip.EnsureQuaternionContinuity)
+            {
                 clip.Clip.EnsureQuaternionContinuity();
+            }
 
             foreach (var target in clip.TargetFloatParams)
             {

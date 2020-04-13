@@ -70,18 +70,27 @@ namespace VamTimeline
             clip.SetCurve(path, typeof(Transform), "localPosition.x", X);
             clip.SetCurve(path, typeof(Transform), "localPosition.y", Y);
             clip.SetCurve(path, typeof(Transform), "localPosition.z", Z);
-            clip.SetCurve(path, typeof(Transform), "localRotation.x", RotX);
-            clip.SetCurve(path, typeof(Transform), "localRotation.y", RotY);
-            clip.SetCurve(path, typeof(Transform), "localRotation.z", RotZ);
-            clip.SetCurve(path, typeof(Transform), "localRotation.w", RotW);
+            // clip.SetCurve(path, typeof(Transform), "localRotation.x", RotX);
+            // clip.SetCurve(path, typeof(Transform), "localRotation.y", RotY);
+            // clip.SetCurve(path, typeof(Transform), "localRotation.z", RotZ);
+            // clip.SetCurve(path, typeof(Transform), "localRotation.w", RotW);
+            clip.SetCurve(path, typeof(Transform), "localEulerAnglesRaw.x", RotX);
+            clip.SetCurve(path, typeof(Transform), "localEulerAnglesRaw.y", RotY);
+            clip.SetCurve(path, typeof(Transform), "localEulerAnglesRaw.z", RotZ);
         }
 
         public void SmoothLoop()
         {
-            foreach (var curve in Curves)
-            {
-                curve.SmoothLoop();
-            }
+            X.SmoothLoop();
+            Y.SmoothLoop();
+            Z.SmoothLoop();
+            // RotX.SmoothLoop();
+            // RotY.SmoothLoop();
+            // RotZ.SmoothLoop();
+            RotX.FlatLoop();
+            RotY.FlatLoop();
+            RotZ.FlatLoop();
+            // RotW.FlatLoop();
         }
 
         private string GetRelativePath()
@@ -113,10 +122,10 @@ namespace VamTimeline
             X.SetKeyframe(time, localPosition.x);
             Y.SetKeyframe(time, localPosition.y);
             Z.SetKeyframe(time, localPosition.z);
-            RotX.SetKeyframe(time, locationRotation.x);
-            RotY.SetKeyframe(time, locationRotation.y);
-            RotZ.SetKeyframe(time, locationRotation.z);
-            RotW.SetKeyframe(time, locationRotation.w);
+            RotX.SetKeyframe(time, locationRotation.eulerAngles.x);
+            RotY.SetKeyframe(time, locationRotation.eulerAngles.y);
+            RotZ.SetKeyframe(time, locationRotation.eulerAngles.z);
+            // RotW.SetKeyframe(time, locationRotation.w);
             var ms = time.ToMilliseconds();
             if (!Settings.ContainsKey(ms))
                 Settings[ms] = new KeyframeSettings { CurveType = CurveTypeValues.Smooth };
@@ -175,7 +184,7 @@ namespace VamTimeline
                 RotX = RotX[RotX.KeyframeBinarySearch(time)],
                 RotY = RotY[RotY.KeyframeBinarySearch(time)],
                 RotZ = RotZ[RotZ.KeyframeBinarySearch(time)],
-                RotW = RotW[RotW.KeyframeBinarySearch(time)],
+                // RotW = RotW[RotW.KeyframeBinarySearch(time)],
                 CurveType = Settings.TryGetValue(time.ToMilliseconds(), out setting) ? setting.CurveType : CurveTypeValues.LeaveAsIs
             };
         }
@@ -188,7 +197,7 @@ namespace VamTimeline
             RotX.SetKeySnapshot(time, snapshot.RotX);
             RotY.SetKeySnapshot(time, snapshot.RotY);
             RotZ.SetKeySnapshot(time, snapshot.RotZ);
-            RotW.SetKeySnapshot(time, snapshot.RotW);
+            // RotW.SetKeySnapshot(time, snapshot.RotW);
             UpdateSetting(time, snapshot.CurveType);
         }
 
@@ -217,16 +226,16 @@ namespace VamTimeline
                 z = Z.Evaluate(playTime)
             };
 
-            var targetLocalRotation = new Quaternion
+            var targetLocalRotation = new Vector3
             {
                 x = RotX.Evaluate(playTime),
                 y = RotY.Evaluate(playTime),
-                z = RotZ.Evaluate(playTime),
-                w = RotW.Evaluate(playTime)
+                z = RotZ.Evaluate(playTime)
+                // w = RotW.Evaluate(playTime)
             };
 
             Controller.transform.localPosition = Vector3.MoveTowards(Controller.transform.localPosition, targetLocalPosition, maxDistanceDelta);
-            Controller.transform.localRotation = Quaternion.RotateTowards(Controller.transform.localRotation, targetLocalRotation, maxRadiansDelta);
+            Controller.transform.localRotation = Quaternion.RotateTowards(Controller.transform.localRotation, Quaternion.Euler(targetLocalRotation), maxRadiansDelta);
 
             var posDistance = Vector3.Distance(Controller.transform.localPosition, targetLocalPosition);
             // NOTE: We skip checking for rotation reached because in some cases we just never get even near the target rotation.
