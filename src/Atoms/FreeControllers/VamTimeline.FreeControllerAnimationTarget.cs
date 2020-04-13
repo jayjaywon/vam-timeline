@@ -101,6 +101,63 @@ namespace VamTimeline
 
         #endregion
 
+        // https://blender.stackexchange.com/a/28474/19026
+        public void EnsureQuaternionContinuity()
+        {
+            var rotations = new List<Quaternion>();
+            for(var key = 0; key < RotX.length; key++)
+            {
+                rotations.Add(new Quaternion(
+                    RotX[key].value,
+                    RotY[key].value,
+                    RotZ[key].value,
+                    RotW[key].value
+                ));
+            }
+            var qs = new QuaternionStabilizer();
+            for(var z = 0; z < rotations.Count; z++)
+            {
+                var theta = 2*Mathf.PI *z / (float)rotations.Count;
+                var mat = new Matrix4x4(
+                    new Vector4(Mathf.Cos(theta), Mathf.Sin(theta), 0, 0),
+                                new Vector4(-Mathf.Sin(theta), Mathf.Cos(theta), 0, 0),
+                                new Vector4(0,0,1, 0),
+                                Vector4.zero
+                                );
+                //var (loc,quat,scale) = mat.decompose();
+                var quat = mat.rotation;
+
+            rotations[z] = qs.Stabilize(quat);
+            }
+        }
+
+private class QuaternionStabilizer
+{
+    private bool _first = true;
+    private Quaternion _old;
+
+    public Quaternion Stabilize(Quaternion q)
+    {
+        float rval;
+        if(_first)
+        {
+            rval = q;
+            _first = false;
+        }
+        else
+        {
+            var d1 = (_old-q).magnitude;
+            var d2 = (_old+q).magnitude;
+            if (d1<d2)
+                rval = q;
+            else
+                rval = -q;
+        }
+        _old = rval;
+        return rval;
+        }
+}
+
         #region Keyframes control
 
         public void SetKeyframeToCurrentTransform(float time)
